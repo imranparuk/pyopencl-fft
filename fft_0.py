@@ -5,6 +5,9 @@ Created on Fri Jan 19 02:39:51 2018
 @author: imran
 """
 
+#check out this when you have time (not used yet -> for optimization)
+#http://www.bealto.com/gpu-fft_group-2.html
+
 import pyopencl as cl
 import numpy as np
 
@@ -28,7 +31,7 @@ os.environ['PYOPENCL_CTX'] = '1'
 # b = np.random.randn(m, p).astype(np.float32)
 a = np.random.randint(100, size=(n*m))
 
-c = np.zeros((n*m), dtype=np.float32)
+c = np.zeros((n*m), np.float32)
 
 
 z = np.fft.fft(a)
@@ -78,8 +81,7 @@ prg2 = cl.Program(ctx, """
 		
 		// This adds (value.x * c - value.y * s, value.x * s + value.y * c) to the sum :
 		tot += (float)(
-			dot(value, (float)(c, -s)), 
-			dot(value, (float)(s, c))
+			dot(value, (float)(c, -s)), dot(value, (float)(s, c))
 		);
 	}
 	
@@ -101,3 +103,5 @@ print("matrix A:")
 print(a.reshape(n, m))
 print("multiplied A*B:")
 print(a_mul_b.reshape(n, m))
+print("python fft:")
+print(z.reshape(n,m))
