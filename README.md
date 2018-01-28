@@ -32,7 +32,7 @@ See list of [contributors](https://github.com/imranparuk/pyopencl_fft/contributo
 
 ## License
 
-This Project is unlicenced
+ © Denel Dynamics 2018
 
 ## Acknowledgments
 

@@ -28,18 +28,19 @@ os.environ['PYOPENCL_CTX'] = '1'
 (n, m) = (2,5)
 
 # a = np.random.randn(n, m).astype(np.float32)
-# b = np.random.randn(m, p).astype(np.float32)
-a = np.random.randint(100, size=(n*m))
+#a = np.random.randint(100, size=(n*m))
+#
+#
+#
+#
+#z = np.fft.fft(a)
+#
+#a = a.astype(np.float32)
+#sze = a.size;
 
-c = np.zeros((n*m), np.float32)
-
-
-z = np.fft.fft(a)
-
-a = a.astype(np.float32)
-sze = a.size;
-
-
+a = np.array([4 + 1j*5, 5 + 1j*6, 6 + 1j*7]).astype(np.complex64)
+b = np.random.randn(1, 3).astype(np.complex64)
+c = np.zeros((1*3), np.complex64)
 
 platform = cl.get_platforms()
 my_gpu_devices = platform[0].get_devices(device_type=cl.device_type.GPU)
@@ -55,10 +56,13 @@ b_buf = cl.Buffer\
 c_buf = cl.Buffer(ctx, mf.WRITE_ONLY, c.nbytes)
 
 
+
+
+
 prg2 = cl.Program(ctx, """
    __kernel void dft(
-	__global const float *in, // complex values input
-	__global float *out)                         // 1 for forward transform, -1 for backward.
+	__global const float2 *in, // complex values input
+	__global float2 *out)                         // 1 for forward transform, -1 for backward.
 {
 	// Get the varying parameter of the parallel execution :
 	int i = get_global_id(0);
@@ -69,19 +73,19 @@ prg2 = cl.Program(ctx, """
 	
     int sign = 1;
 	// Initialize sum and inner arguments
-	float tot = 0;
-	float param = (-2 * sign * i) * M_PI / (double)length;
+	float2 tot = 0;
+	float2 param = (-2 * sign * i) * M_PI / (float2)length;
 	
 	for (int k = 0; k < length; k++) {
-		float value = in[k];
+		float2 value = in[k];
 		
 		// Compute sin and cos in a single call : 
-		float c;
-		float s = sincos(k * param, &c);
+		float2 c;
+		float2 s = sincos(k * param, &c);
 		
 		// This adds (value.x * c - value.y * s, value.x * s + value.y * c) to the sum :
-		tot += (float)(
-			dot(value, (float)(c, -s)), dot(value, (float)(s, c))
+		tot += (float2)(
+			dot(value, (float2)(c, -s)), dot(value, (float2)(s, c))
 		);
 	}
 	
@@ -90,7 +94,7 @@ prg2 = cl.Program(ctx, """
 		out[i] = tot;
 	} else {
 		// backward transform (frequential -> space)
-		out[i] = tot / (float)length;
+		out[i] = tot / (float2)length;
 	}
 }""").build();
         
