@@ -8,7 +8,7 @@ Created on Fri Jan 19 02:39:51 2018
 #check out this when you have time (not used yet -> for optimization)
 #http://www.bealto.com/gpu-fft_group-2.html
 
-#github pyopencl fft
+#github pyopencl fft kernel adapetd from
 #https://github.com/pradeepsinngh/fft-dft-opencl
 
 import pyopencl as cl
@@ -28,22 +28,16 @@ print(get_test_platforms_and_devices())
 os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
 os.environ['PYOPENCL_CTX'] = '1'
 
-(n, m) = (2,5)
-
-# a = np.random.randn(n, m).astype(np.float32)
-#a = np.random.randint(100, size=(n*m))
-#
-#
-#
-#
-#z = np.fft.fft(a)
-#
-#a = a.astype(np.float32)
-#sze = a.size;
+(n, m) = (1,3)
 
 a = np.array([4 + 1j*5, 5 + 1j*6, 6 + 1j*7]).astype(np.complex64)
-b = np.random.randn(1, 3).astype(np.complex64)
-c = np.zeros((1*3), np.complex64)
+b = np.random.randn(n, m).astype(np.complex64)
+c = np.zeros((n*m), np.complex64)
+z = np.fft.fft(a)
+
+length = a.size;
+sign = 1;
+
 
 platform = cl.get_platforms()
 my_gpu_devices = platform[0].get_devices(device_type=cl.device_type.GPU)
@@ -59,17 +53,18 @@ b_buf = cl.Buffer\
 c_buf = cl.Buffer(ctx, mf.WRITE_ONLY, c.nbytes)
 
 
-
-
+len_buf = np.int32(length);
+   
+sign_buff = np.int32(sign);
 
 prg2 = cl.Program(ctx, """
 # define len 64 //// denotes value of N point
-__kernel __attribute__ ((reqd_work_group_size(2*len,1,1)))
+__kernel
 void dft(
 	__global const float2 *in, // complex values input
 	__global float2 *out,      // complex values output
-	int length,                 // number of input and output values
-	int sign)                   // sign modifier in the exponential :
+	 int length,                 // number of input and output values
+	 int sign)                   // sign modifier in the exponential :
 	                            // 1 for forward transform, -1 for backward.
 {
 	// Get the varying parameter of the parallel execution :
@@ -105,15 +100,17 @@ void dft(
 		out[i] = tot / (float)length;
 	}
 }""").build();
-        
-prg2.dft(queue, c.shape, None, a_buf, c_buf)
+    
+#	hls_run_kernel("dft",x,2*len,y,2*len,length,1,sign,1);
+
+prg2.dft(queue, c.shape, None, a_buf, c_buf, len_buf, sign_buff)
 
 a_mul_b = np.empty_like(c)
 cl.enqueue_copy(queue, a_mul_b, c_buf)
 
 print("matrix A:")
 print(a.reshape(n, m))
-print("multiplied A*B:")
+print("pyopencl_fft:")
 print(a_mul_b.reshape(n, m))
 print("python fft:")
 print(z.reshape(n,m))
