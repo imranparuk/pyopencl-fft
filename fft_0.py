@@ -11,20 +11,25 @@ Created on Fri Jan 19 02:39:51 2018
 #github pyopencl fft kernel adapetd from
 #https://github.com/pradeepsinngh/fft-dft-opencl
 
-import pyopencl as cl
-import numpy as np
-
 #opencl float2 stuff
 # thanks to -> https://stackoverflow.com/questions/21745934/how-to-use-float2-in-pyopencl
+
+#timeit not working? 
+
+#When algorithm gets better, it needs to compete with other GPU FFT algo's
+# (1) http://pythonhosted.org/pyfft/
+
+import numpy as np
+
 import pyopencl as cl
 import pyopencl.array as cl_array
+from pyopencl.tools import get_test_platforms_and_devices
 
 import datetime
 from time import time
 
 import os
 
-from pyopencl.tools import get_test_platforms_and_devices
 print(get_test_platforms_and_devices())
 
 os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
@@ -58,49 +63,10 @@ len_buf = np.int32(length);
    
 sign_buff = np.int32(sign);
 
-prg = cl.Program(ctx, """
-# define len 64 //// denotes value of N point
-__kernel
-void dft(
-	__global const float2 *in, // complex values input
-	__global float2 *out,      // complex values output
-	 int length,                 // number of input and output values
-	 int sign)                   // sign modifier in the exponential :
-	                            // 1 for forward transform, -1 for backward.
-{
-	// Get the varying parameter of the parallel execution :
-	int i = get_global_id(0);
 
-	// In case we're executed "too much", check bounds :
-	if (i >= length)
-		return;
+prg = cl.Program(ctx, open('kernel.cl').read()).build();
 
-	// Initialize sum and inner arguments
-	float2 tot = 0;
-	float param = (-2 * sign * i) * 3.141593f / (float)length;
 
-	for (int k = 0; k < length; k++) {
-		float2 value = in[k];
-
-		// Compute sin and cos in a single call :
-		float c;
-		float s = sincos(k * param, &c);
-
-		// This adds (value.x * c - value.y * s, value.x * s + value.y * c) to the sum :
-		tot += (float2)(
-			dot(value, (float2)(c, -s)),
-			dot(value, (float2)(s, c))
-		);
-	}
-
-	if (sign == 1) {
-		// forward transform (space -> frequential)
-		out[i] = tot;
-	} else {
-		// backward transform (frequential -> space)
-		out[i] = tot / (float)length;
-	}
-}""").build();
     
 #	hls_run_kernel("dft",x,2*len,y,2*len,length,1,sign,1);
 
@@ -129,7 +95,7 @@ print("Time Taken GPU DFT: " , timeGPUdft )
 print("Time Taken Py FFT: ",  timePyFFT )
 
 
-#timeit not working? 
+
 
 
 
