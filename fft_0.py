@@ -19,6 +19,8 @@ import numpy as np
 import pyopencl as cl
 import pyopencl.array as cl_array
 
+import datetime
+from time import time
 
 import os
 
@@ -28,14 +30,13 @@ print(get_test_platforms_and_devices())
 os.environ['PYOPENCL_COMPILER_OUTPUT'] = '1'
 os.environ['PYOPENCL_CTX'] = '1'
 
-(n, m) = (1,3)
+(n, m) = (1,100)
 
 a = np.array([4 + 1j*5, 5 + 1j*6, 6 + 1j*7]).astype(np.complex64)
 b = np.random.randn(n, m).astype(np.complex64)
 c = np.zeros((n*m), np.complex64)
-z = np.fft.fft(a)
 
-length = a.size;
+length = b.size;
 sign = 1;
 
 
@@ -57,7 +58,7 @@ len_buf = np.int32(length);
    
 sign_buff = np.int32(sign);
 
-prg2 = cl.Program(ctx, """
+prg = cl.Program(ctx, """
 # define len 64 //// denotes value of N point
 __kernel
 void dft(
@@ -103,18 +104,32 @@ void dft(
     
 #	hls_run_kernel("dft",x,2*len,y,2*len,length,1,sign,1);
 
-prg2.dft(queue, c.shape, None, a_buf, c_buf, len_buf, sign_buff)
-
+time1 = time();
+prg.dft(queue, c.shape, None, b_buf, c_buf, len_buf, sign_buff)
 a_mul_b = np.empty_like(c)
 cl.enqueue_copy(queue, a_mul_b, c_buf)
 
+time2 = time();
+z = np.fft.fft(b);
+time3 = time();
+
+timeGPUdft = time2 - time1;
+timePyFFT = time3 - time2;
+
+
+
 print("matrix A:")
-print(a.reshape(n, m))
+print(b.reshape(n, m))
 print("pyopencl_fft:")
 print(a_mul_b.reshape(n, m))
 print("python fft:")
 print(z.reshape(n,m))
 
+print("Time Taken GPU DFT: " , timeGPUdft )
+print("Time Taken Py FFT: ",  timePyFFT )
+
+
+#timeit not working? 
 
 
 
